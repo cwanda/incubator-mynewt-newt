@@ -31,6 +31,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Valid connection type
+var connType = []string{"serial", "oic_serial", "ble", "oic_ble", "udp", "oic_udp"}
+
 func copyValidAddress(cp *config.ConnProfile, addrString string) bool {
 	switch cp.MyType {
 	case "ble":
@@ -52,6 +55,16 @@ func copyValidAddress(cp *config.ConnProfile, addrString string) bool {
 func isAddressTypeValid(cp *config.ConnProfile, addrtype uint64) bool {
 	if cp.MyType == "ble" && addrtype < 4 {
 		return true
+	}
+	return false
+}
+
+func isConnTypeValid(typeStr string) bool {
+
+	for _, value := range connType {
+		if typeStr == value {
+			return true
+		}
 	}
 	return false
 }
@@ -79,6 +92,10 @@ func connProfileAddCmd(cmd *cobra.Command, args []string) {
 		case "name":
 			cp.MyName = s[1]
 		case "type":
+			if isConnTypeValid(s[1]) != true {
+				err_str := fmt.Sprintf("\nValid types are: %v", connType)
+				nmUsage(cmd, util.NewNewtError("Invalid type: "+s[1]+err_str))
+			}
 			cp.MyType = s[1]
 		case "connstring":
 			cp.MyConnString = s[1]
@@ -95,6 +112,16 @@ func connProfileAddCmd(cmd *cobra.Command, args []string) {
 		default:
 			nmUsage(cmd, util.NewNewtError("Unknown variable "+s[0]))
 		}
+	}
+
+	// Must provide a type
+	if len(cp.MyType) == 0 {
+		nmUsage(cmd, util.NewNewtError("Must provide a type"+cp.MyType))
+	}
+
+	// Must provide a connstring
+	if len(cp.MyConnString) == 0 {
+		nmUsage(cmd, util.NewNewtError("Must provide a connstring"))
 	}
 
 	if err := cpm.AddConnProfile(cp); err != nil {
